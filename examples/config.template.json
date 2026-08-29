@@ -3,7 +3,8 @@
   "display": {
     "driver": "auto",
     "model": "impression_7_3",
-    "orientation": 0
+    "orientation": 0,
+    "saturation": 0.5
   },
   "device": {
     "name": "rndrSBC Frame",
@@ -12,6 +13,10 @@
   },
   "active_playlist": "default",
   "playlists": {
-    "default": ["weather", "network", "calendar", "photo_frame", "system_stats"]
+    "default": [
+      {"widget": "onboarding", "duration_minutes": 5, "settings": {"title": "Let's set up your display"}},
+      {"widget": "weather", "duration_minutes": 15, "settings": {"location": "New York City", "latitude": 40.7128, "longitude": -74.0060, "units": "imperial"}},
+      {"widget": "calendar", "duration_minutes": 30, "settings": {"title": "My Schedule", "first_day_sunday": true}}
+    ]
   }
 }
