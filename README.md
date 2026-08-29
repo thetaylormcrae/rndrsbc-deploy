@@ -88,23 +88,54 @@ into `$RNDRSBC_HOME/plugins/`, and auto-discovered on the next render cycle.
 
 ### Fresh install on a Raspberry Pi (from scratch)
 
+This repo is installable in one command via [`install.sh`](install.sh) —
+engine + deploy home + optional boot service, all wired up:
+
+```bash
+sudo ./install.sh --with-service
+```
+
+That single command:
+
+1. installs system packages (`python3`, venv, `git`)
+2. creates a virtualenv at `~/.venvs/rndrsbc`
+3. `pip`-installs the **`rndrsbc[pi]`** engine from PyPI
+4. scaffolds a deploy home at `~/.rndrsbc` with a default `config.json`
+   (`driver: "auto"`) and `data/` `plugins/` `registry/`
+5. registers the `systemd` boot service (from `--with-service`)
+
+Manage afterwards:
+
+```bash
+export RNDRSBC_HOME="$HOME/.rndrsbc"
+~/.venvs/rndrsbc/bin/rndrsbc 8080             # run in foreground
+sudo systemctl enable --now rndrsbc-$USER     # or boot at startup
+rndrsbc version                               # confirm engine version (0.3.0)
+```
+
+Flags: `--venv DIR`, `--home DIR`, `--with-service`, `--service-user U`,
+`--no-deps` / `--deps`, `--python BIN` (+ `install.sh --help`).
+
+> **Why an installer?** Code (the engine) ships on PyPI and upgrades
+> independently; this repo carries state (config, catalog, service unit). The
+> installer wires the two so an operator gets a working frame from this repo
+> alone — that's exactly the point of splitting the deploy side into its own
+> repo.
+
+### Manually (same steps, done by hand)
+
 ```bash
 sudo apt update && sudo apt install -y python3-venv git
-
 git clone https://github.com/thetaylormcrae/rndrsbc-deploy.git ~/rndrsbc
 cd ~/rndrsbc
 
 python3 -m venv ~/.venvs/rndrsbc && source ~/.venvs/rndrsbc/bin/activate
 pip install -U pip
-pip install rndrsbc          # 0.3.0
-rndrsbc version              # expect: 0.3.0
+pip install rndrsbc[pi]        # 0.3.0
+rndrsbc version                # expect: 0.3.0
 
-# scaffold a deploy home + auto-detecting config:
-export RNDRSBC_HOME="$HOME/.rndrsbc"
-./bootstrap.sh --home "$RNDRSBC_HOME"
-
-grep '"driver"' "$RNDRSBC_HOME/config.json"   # -> "auto"
-rndrsbc 8080                 # boots the frame
+./bootstrap.sh --home "$RNDRSBC_HOME"       # scaffold deploy home + driver:auto config
+rndrsbc 8080                   # boots the frame
 ```
 
 Boot service (optional): copy `service/rndrsbc.service` to
