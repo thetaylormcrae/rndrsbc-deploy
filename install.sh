@@ -218,9 +218,10 @@ if [ "$INSTALL_SERVICE" = "yes" ]; then
       "$SERVICE_FILE" > /etc/systemd/system/rndrsbc-${SERVICE_USER}.service
   systemctl daemon-reload
 
-  # start + verify the service as part of install
-  log "enabling + starting rndrsbc-${SERVICE_USER}"
-  systemctl enable --now rndrsbc-${SERVICE_USER}.service
+  # restart (even if already running) so the just-upgraded venv is actually loaded
+  log "enabling + (re)starting rndrsbc-${SERVICE_USER}"
+  systemctl enable rndrsbc-${SERVICE_USER}.service
+  systemctl restart rndrsbc-${SERVICE_USER}.service
   sleep 2
   if systemctl is-active --quiet rndrsbc-${SERVICE_USER}.service; then
     SERVICE_STATE="running"
