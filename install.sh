@@ -14,9 +14,19 @@ set -euo pipefail
 
 # ---- defaults --------------------------------------------------------------
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_DIR="${VENV_DIR:-${HOME:-$HOME}/.venvs/rndrsbc}"
-DEPLOY_HOME="${RNDRSBC_HOME:-${HOME:-$HOME}/.rndrsbc}"
-SERVICE_USER="${SERVICE_USER:-${USER:-$(id -un)}}"
+# If run via sudo, respect the actual invoking user (SUDO_USER)
+REAL_USER="${SUDO_USER:-${USER:-$(id -un)}}"
+if [ "$REAL_USER" = "root" ] && [ -n "${SUDO_USER:-}" ]; then
+  REAL_USER="$SUDO_USER"
+fi
+REAL_HOME="$(eval echo "~${REAL_USER}")"
+if [ ! -d "$REAL_HOME" ]; then
+  REAL_HOME="${HOME:-/root}"
+fi
+
+VENV_DIR="${VENV_DIR:-${REAL_HOME}/.venvs/rndrsbc}"
+DEPLOY_HOME="${RNDRSBC_HOME:-${REAL_HOME}/.rndrsbc}"
+SERVICE_USER="${SERVICE_USER:-$REAL_USER}"
 INSTALL_SERVICE="${INSTALL_SERVICE:-no}"     # set to 'yes' to also install systemd service
 DO_DEPS="${DO_DEPS:-auto}"                    # apt before/yes/no (auto => require venv3/git, install if missing & run as root/sudo)
 PY_BIN="${PY_BIN:-python3}"
