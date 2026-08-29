@@ -1,0 +1,10 @@
+# Deploy-home runtime state (created by bootstrap.sh --home)
+config.json
+data/
+plugins/
+registry/
+
+# Python / tooling
+__pycache__/
+*.pyc
+.DS_Store

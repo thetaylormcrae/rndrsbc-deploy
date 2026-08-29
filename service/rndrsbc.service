@@ -1,0 +1,16 @@
+[Unit]
+Description=rndrSBC e-paper frame
+After=network.target
+
+[Service]
+# User owns the frame process and its deployment home.
+User=%i
+Group=%i
+# Point the engine at a user-owned state dir; code stays in site-packages.
+Environment=RNDRSBC_HOME=/home/%i/.rndrsbc
+ExecStart=/usr/local/bin/rndrsbc 8080
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
