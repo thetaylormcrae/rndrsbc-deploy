@@ -1,6 +1,11 @@
 # rndrSBC — Deployment Repo
 
-This is the **operator-side** companion to the `rndrsbc` PyPI core package.
+![GitHub last commit](https://img.shields.io/github/last-commit/thetaylormcrae/rndrsbc-deploy)
+![License](https://img.shields.io/github/license/thetaylormcrae/rndrsbc)
+![Engine](https://img.shields.io/pypi/v/rndrsbc?label=rndrsbc%20engine)
+[![rndrsbc engine](https://img.shields.io/github/v/release/thetaylormcrae/rndrsbc?label=core%20release)](https://github.com/thetaylormcrae/rndrsbc/releases)
+
+This is the **operator-side** companion to the [`rndrsbc`](https://github.com/thetaylormcrae/rndrsbc) PyPI core package.
 
 The core (`pip install rndrsbc`) ships the engine: scheduler, web dashboard,
 widget framework, display drivers. It never holds user data — everything
@@ -9,6 +14,10 @@ directory you run from in self-contained mode).
 
 This repo provides what the **operator/viewer** of a frame needs on top of the
 core: config scaffolding, the community widget catalog, and service wiring.
+
+> **Engine version tracking:** this repo's `catalog` pins `min_core: "0.3.0"`
+> (the release that ships display auto-detection). The engine itself upgrades
+> independently via `pip install -U rndrsbc` — this repo never holds wheel/code.
 
 ---
 ## Relationship to the core
@@ -76,6 +85,38 @@ rndrsbc list
 ```
 Artifacts are downloaded, SHA-256 verified against the catalog feed, unpacked
 into `$RNDRSBC_HOME/plugins/`, and auto-discovered on the next render cycle.
+
+### Fresh install on a Raspberry Pi (from scratch)
+
+```bash
+sudo apt update && sudo apt install -y python3-venv git
+
+git clone https://github.com/thetaylormcrae/rndrsbc-deploy.git ~/rndrsbc
+cd ~/rndrsbc
+
+python3 -m venv ~/.venvs/rndrsbc && source ~/.venvs/rndrsbc/bin/activate
+pip install -U pip
+pip install rndrsbc          # 0.3.0
+rndrsbc version              # expect: 0.3.0
+
+# scaffold a deploy home + auto-detecting config:
+export RNDRSBC_HOME="$HOME/.rndrsbc"
+./bootstrap.sh --home "$RNDRSBC_HOME"
+
+grep '"driver"' "$RNDRSBC_HOME/config.json"   # -> "auto"
+rndrsbc 8080                 # boots the frame
+```
+
+Boot service (optional): copy `service/rndrsbc.service` to
+`/etc/systemd/system/`, point `ExecStart` at your venv's `rndrsbc` binary and set
+`Environment=RNDRSBC_HOME=...`, then `systemctl enable --now rndrsbc`.
+
+---
+
+## License
+
+Operates under the same license as the core `rndrsbc` engine. Config scaffold,
+catalog samples, and service wiring are original work.
 
 ---
 ## Contributors: adding a widget to the community catalog
