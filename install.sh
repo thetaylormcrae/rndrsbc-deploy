@@ -123,9 +123,9 @@ if [ "$DO_DEPS" = "yes" ]; then
   if [ "$(id -u)" -ne 0 ]; then
     die "system packages require root. Re-run with sudo (add --no-deps to skip)."
   fi
-  log "installing system packages (python3, venv, git)..."
+  log "installing system packages (python3, venv, git, hostapd, dnsmasq)..."
   apt-get update -qq
-  apt-get install -y -qq "$PY_BIN" "${PY_BIN}"-venv python3-pip git
+  apt-get install -y -qq "$PY_BIN" "${PY_BIN}"-venv python3-pip git hostapd dnsmasq
 
   if command -v raspi-config >/dev/null 2>&1; then
     log "enabling Raspberry Pi SPI and I2C interfaces for e-paper displays..."
@@ -155,6 +155,14 @@ command -v "$VENV_DIR/bin/rndrsbc" >/dev/null 2>&1 || \
 # ---- 4. deploy home scaffold ----------------------------------------------
 log "scaffolding deploy home at $DEPLOY_HOME"
 "$REPO_DIR/bootstrap.sh" --home "$DEPLOY_HOME"
+
+# The scaffold (and any pre-existing files) may be root-owned if install ran under
+# sudo. The engine runs as the real user and must be able to write config/state
+# (migrations, panel health, settings). Normalize ownership so writes never fail.
+if [ "$REAL_USER" != "root" ]; then
+  chown -R "${REAL_USER}":"${REAL_USER}" "$DEPLOY_HOME" 2>/dev/null \
+    || log "WARNING: could not chown $DEPLOY_HOME to $REAL_USER"
+fi
 
 # Validate the existing config actually loads under THIS engine version.
 # A stale/old-schema config (e.g. a pre-migration format) will crash the
@@ -195,6 +203,14 @@ if [ "$INSTALL_SERVICE" = "yes" ]; then
     die "--with-service requires root (sudo). Add --no-deps if packages are already present."
   fi
   log "installing systemd unit for user '${SERVICE_USER}' (ExecStart=$BIN_PATH)"
+  # Hand the deploy home + virtualenv to the service user so the engine can
+  # write config/state (migrations, panel health, settings). If any file was
+  # created by a previous sudo/root run it stays root-owned and every write
+  # fails with Permission denied — normalize ownership before starting.
+  if [ "$SERVICE_USER" != "root" ]; then
+    chown -R "${SERVICE_USER}":"${SERVICE_USER}" "$DEPLOY_HOME" "$VENV_DIR" 2>/dev/null \
+      || log "WARNING: could not chown $DEPLOY_HOME/$VENV_DIR to $SERVICE_USER (run as root?)"
+  fi
   sed -e "s|^ExecStart=.*|ExecStart=${BIN_PATH} 8080|" \
       -e "s|^Environment=RNDRSBC_HOME=.*|Environment=RNDRSBC_HOME=${DEPLOY_HOME}|" \
       -e "s|^User=%i|User=${SERVICE_USER}|" \
