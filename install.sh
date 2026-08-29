@@ -138,8 +138,8 @@ fi
 
 # ---- 3. engine from PyPI ---------------------------------------------------
 log "installing/upgrading rndrsbc engine (PyPI, [pi] extra)..."
-"$VENV_DIR/bin/pip" install -q --upgrade pip
-"$VENV_DIR/bin/pip" install -q --upgrade "rndrsbc[pi]"
+"$VENV_DIR/bin/pip" install -q --no-cache-dir --upgrade pip
+"$VENV_DIR/bin/pip" install -q --no-cache-dir --upgrade "rndrsbc[pi]"
 
 VERSION=$("$VENV_DIR/bin/rndrsbc" version 2>/dev/null || "$VENV_DIR/bin/python" -c 'import core; print(getattr(core,"__version__","?"))')
 log "engine version: ${VERSION:-?}"
