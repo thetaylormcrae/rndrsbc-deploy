@@ -10,7 +10,7 @@
       "author": { "name": "rndrSBC", "url": "https://github.com/rndrsbc" },
       "version": "0.2.1",
       "license": "MIT",
-      "min_core": "0.1.0",
+      "min_core": "0.3.0",
       "sha256": "<sha256-of-your-artifact.zip>",
       "url": "https://rndrsbc.github.io/registry/artifacts/sonos_now_playing-0.2.1.zip",
       "entry": "widget.py",

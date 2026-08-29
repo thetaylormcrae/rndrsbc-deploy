@@ -53,13 +53,20 @@ python3 main.py 8080
 pip install rndrsbc
 
 # Create a deployment home & config on the Pi
+#   (use the scaffold from the repo: ./bootstrap.sh --home "$RNDRSBC_HOME")
 export RNDRSBC_HOME=~/.rndrsbc
-rndrsbc --home "$RNDRSBC_HOME" install-demo-config   # (see bootstrap.sh)
+mkdir -p "$RNDRSBC_HOME"/{data,plugins,registry}
+cp examples/config.template.json "$RNDRSBC_HOME"/config.json
 rndrsbc 8080
 
 # Upgrade the engine only (data preserved)
 pip install -U rndrsbc
 ```
+
+**Display auto-detection (v0.3.0+):** the default `driver: auto` probes for an
+Inky panel at startup and renders to the virtual display only if no panel is
+found (or when running headless). No manual `model` choice is required for
+standard Pimoroni panels.
 
 ### Community widgets — no git clone
 ```bash
