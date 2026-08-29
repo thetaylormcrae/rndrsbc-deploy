@@ -170,8 +170,11 @@ fi
 # broken file, so back it up and regenerate rather than leave a landmine.
 if [ -f "$DEPLOY_HOME/config.json" ]; then
   VALID=1
-  "$VENV_DIR/bin/python" - <<'PYEOF' 2>/dev/null || VALID=0
-import json, sys
+  # NOTE: quoted heredoc would keep $DEPLOY_HOME literal and ALWAYS fail;
+  # export + unquoted heredoc so the real path reaches Python.
+  export RNDRSBC_CFG_PATH="$DEPLOY_HOME/config.json"
+  "$VENV_DIR/bin/python" - <<PYEOF 2>/dev/null || VALID=0
+import json, os
 # the engine exposes its migration package as the top-level 'core'
 mod = None
 for name in ("core.migrations", "rndrsbc.core.migrations"):
@@ -182,7 +185,14 @@ for name in ("core.migrations", "rndrsbc.core.migrations"):
         continue
 if mod is None:
     sys.exit(0)  # can't import migrations -> leave config alone
-raw = json.load(open('$DEPLOY_HOME/config.json'))
+cfg_path = os.environ["RNDRSBC_CFG_PATH"]
+try:
+    with open(cfg_path, "r") as fh:
+        raw = json.load(fh)
+except Exception:
+    sys.exit(1)  # malformed / unparseable -> genuinely incompatible
+if not isinstance(raw, dict):
+    sys.exit(1)
 try:
     mod.migrate(raw)
 except Exception:
