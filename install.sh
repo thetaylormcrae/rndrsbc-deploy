@@ -28,6 +28,7 @@ VENV_DIR="${VENV_DIR:-${REAL_HOME}/.venvs/rndrsbc}"
 DEPLOY_HOME="${RNDRSBC_HOME:-${REAL_HOME}/.rndrsbc}"
 SERVICE_USER="${SERVICE_USER:-$REAL_USER}"
 INSTALL_SERVICE="${INSTALL_SERVICE:-no}"     # set to 'yes' to also install systemd service
+DO_UNINSTALL="${DO_UNINSTALL:-no}"            # set to 'yes' to remove service+venv+home
 DO_DEPS="${DO_DEPS:-auto}"                    # apt before/yes/no (auto => require venv3/git, install if missing & run as root/sudo)
 PY_BIN="${PY_BIN:-python3}"
 
@@ -48,6 +49,7 @@ options:
   --no-deps         skip apt system packages
   --deps            force apt system packages (run as root/sudo)
   --python BIN      python interpreter         (default: python3)
+  -u, --uninstall   remove the service, virtualenv, and deployment home
   -h, --help        show this help
 EOT
 }
@@ -62,10 +64,47 @@ while [ $# -gt 0 ]; do
     --no-deps) DO_DEPS="no"; shift;;
     --deps) DO_DEPS="yes"; shift;;
     --python) PY_BIN="$2"; shift 2;;
+    -u|--uninstall) DO_UNINSTALL="yes"; shift;;
     -h|--help) usage; exit 0;;
     *) die "unknown option: $1 (try --help)";;
   esac
 done
+
+# ---- 0. uninstall ----------------------------------------------------------
+if [ "${DO_UNINSTALL:-no}" = "yes" ]; then
+  log "uninstall mode"
+  [ "$(id -u)" -eq 0 ] || die "uninstall requires root (sudo)."
+
+  # service
+  if [ -f "/etc/systemd/system/rndrsbc-${SERVICE_USER}.service" ]; then
+    systemctl disable --now "rndrsbc-${SERVICE_USER}.service" 2>/dev/null || true
+    rm -f "/etc/systemd/system/rndrsbc-${SERVICE_USER}.service"
+    systemctl daemon-reload
+    log "removed systemd service rndrsbc-${SERVICE_USER}"
+  else
+    log "no systemd service for ${SERVICE_USER} to remove"
+  fi
+
+  # virtualenv
+  if [ -d "$VENV_DIR" ]; then
+    rm -rf "$VENV_DIR"
+    log "removed virtualenv $VENV_DIR"
+  else
+    log "no virtualenv at $VENV_DIR to remove"
+  fi
+
+  # deploy home
+  if [ -d "$DEPLOY_HOME" ]; then
+    rm -rf "$DEPLOY_HOME"
+    log "removed deploy home $DEPLOY_HOME"
+  else
+    log "no deploy home at $DEPLOY_HOME to remove"
+  fi
+
+  printf '\n\033[1;32mrndrSBC uninstall complete\033[0m\n'
+  printf '  system packages were left in place (python/git); remove manually if desired.\n'
+  exit 0
+fi
 
 # ---- 1. system packages ----------------------------------------------------
 need_apt_deps() { command -v "${PY_BIN}" >/dev/null 2>&1 && command -v git >/dev/null 2>&1; }
