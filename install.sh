@@ -155,17 +155,26 @@ log "scaffolding deploy home at $DEPLOY_HOME"
 # engine at startup; on install we prefer the current template over a
 # broken file, so back it up and regenerate rather than leave a landmine.
 if [ -f "$DEPLOY_HOME/config.json" ]; then
-  if ! "$VENV_DIR/bin/python" -c "
+  VALID=1
+  "$VENV_DIR/bin/python" - <<'PYEOF' 2>/dev/null || VALID=0
 import json, sys
-try:
-    from rndrsbc.core.migrations import migrate
-except Exception:
-    sys.exit(0)  # no migrations module -> can't validate, leave as-is
+# the engine exposes its migration package as the top-level 'core'
+mod = None
+for name in ("core.migrations", "rndrsbc.core.migrations"):
+    try:
+        mod = __import__(name, fromlist=["migrate"])
+        break
+    except Exception:
+        continue
+if mod is None:
+    sys.exit(0)  # can't import migrations -> leave config alone
 raw = json.load(open('$DEPLOY_HOME/config.json'))
 try:
-    migrate(raw)
-except Exception as e:
-    sys.exit(1)" 2>/dev/null; then
+    mod.migrate(raw)
+except Exception:
+    sys.exit(1)  # migration crashes on this config -> incompatible
+PYEOF
+  if [ "$VALID" != "1" ]; then
     mv "$DEPLOY_HOME/config.json" "$DEPLOY_HOME/config.json.incompatible"
     "$REPO_DIR/bootstrap.sh" --home "$DEPLOY_HOME"   # regenerates fresh config.json
     log "existing config.json was incompatible with engine ${VERSION:-?}; backed it up as config.json.incompatible and regenerated from template"
@@ -192,8 +201,10 @@ if [ "$INSTALL_SERVICE" = "yes" ]; then
   systemctl enable --now rndrsbc-${SERVICE_USER}.service
   sleep 2
   if systemctl is-active --quiet rndrsbc-${SERVICE_USER}.service; then
+    SERVICE_STATE="running"
     log "service rndrsbc-${SERVICE_USER} is RUNNING"
   else
+    SERVICE_STATE="FAILED"
     log "WARNING: rndrsbc-${SERVICE_USER} not active — logs below; run:'systemctl status rndrsbc-${SERVICE_USER}'"
     journalctl -u rndrsbc-${SERVICE_USER}.service -n 30 --no-pager 2>/dev/null | tail -30 || true
   fi
@@ -207,7 +218,7 @@ printf '  engine : %s\n' "${VERSION:-?}"
 printf '  venv   : %s\n' "$VENV_DIR"
 printf '  home   : %s\n\n' "$DEPLOY_HOME"
 if [ "$INSTALL_SERVICE" = "yes" ]; then
-  printf '  service: rndrsbc-%s (enabled, running)\n' "$SERVICE_USER"
+  printf '  service: rndrsbc-%s (enabled, %s)\n' "$SERVICE_USER" "${SERVICE_STATE:-?}"
   printf '  status : systemctl status rndrsbc-%s\n' "$SERVICE_USER"
   printf '  logs   : journalctl -u rndrsbc-%s -f\n' "$SERVICE_USER"
   printf '  bind   : ss -tlnp | grep %s\n' "$PORT"
