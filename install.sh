@@ -125,15 +125,33 @@ if [ "$INSTALL_SERVICE" = "yes" ]; then
       -e "s|^Group=%i|Group=${SERVICE_USER}|" \
       "$SERVICE_FILE" > /etc/systemd/system/rndrsbc-${SERVICE_USER}.service
   systemctl daemon-reload
-  log "unit installed: rndrsbc-${SERVICE_USER}  (enable/start with systemctl)"
+
+  # start + verify the service as part of install
+  log "enabling + starting rndrsbc-${SERVICE_USER}"
+  systemctl enable --now rndrsbc-${SERVICE_USER}.service
+  sleep 2
+  if systemctl is-active --quiet rndrsbc-${SERVICE_USER}.service; then
+    log "service rndrsbc-${SERVICE_USER} is RUNNING"
+  else
+    log "WARNING: rndrsbc-${SERVICE_USER} not active — logs below; run:'systemctl status rndrsbc-${SERVICE_USER}'"
+    journalctl -u rndrsbc-${SERVICE_USER}.service -n 30 --no-pager 2>/dev/null | tail -30 || true
+  fi
 fi
 
 # ---- done ------------------------------------------------------------------
+PORT=8080
 log "install complete."
-printf '\n'
-printf '\033[1;32mrndrSBC install complete\033[0m\n'
+printf '\n\033[1;32mrndrSBC install complete\033[0m\n'
 printf '  engine : %s\n' "${VERSION:-?}"
 printf '  venv   : %s\n' "$VENV_DIR"
-printf '  home   : %s  (export RNDRSBC_HOME=%s)\n\n' "$DEPLOY_HOME" "$DEPLOY_HOME"
-printf 'Run it now:\n  export RNDRSBC_HOME=%s\n  %s 8080\n' "$DEPLOY_HOME" "$BIN_PATH"
+printf '  home   : %s\n\n' "$DEPLOY_HOME"
+if [ "$INSTALL_SERVICE" = "yes" ]; then
+  printf '  service: rndrsbc-%s (enabled, running)\n' "$SERVICE_USER"
+  printf '  status : systemctl status rndrsbc-%s\n' "$SERVICE_USER"
+  printf '  logs   : journalctl -u rndrsbc-%s -f\n' "$SERVICE_USER"
+  printf '  bind   : ss -tlnp | grep %s\n' "$PORT"
+  printf '  stop   : systemctl stop rndrsbc-%s\n' "$SERVICE_USER"
+else
+  printf '  run    : export RNDRSBC_HOME=%s\n           %s %s\n' "$DEPLOY_HOME" "$BIN_PATH" "$PORT"
+fi
 printf '\nWidget install & access docs: see README.md\n'
