@@ -150,6 +150,28 @@ command -v "$VENV_DIR/bin/rndrsbc" >/dev/null 2>&1 || \
 log "scaffolding deploy home at $DEPLOY_HOME"
 "$REPO_DIR/bootstrap.sh" --home "$DEPLOY_HOME"
 
+# Validate the existing config actually loads under THIS engine version.
+# A stale/old-schema config (e.g. a pre-migration format) will crash the
+# engine at startup; on install we prefer the current template over a
+# broken file, so back it up and regenerate rather than leave a landmine.
+if [ -f "$DEPLOY_HOME/config.json" ]; then
+  if ! "$VENV_DIR/bin/python" -c "
+import json, sys
+try:
+    from rndrsbc.core.migrations import migrate
+except Exception:
+    sys.exit(0)  # no migrations module -> can't validate, leave as-is
+raw = json.load(open('$DEPLOY_HOME/config.json'))
+try:
+    migrate(raw)
+except Exception as e:
+    sys.exit(1)" 2>/dev/null; then
+    mv "$DEPLOY_HOME/config.json" "$DEPLOY_HOME/config.json.incompatible"
+    "$REPO_DIR/bootstrap.sh" --home "$DEPLOY_HOME"   # regenerates fresh config.json
+    log "existing config.json was incompatible with engine ${VERSION:-?}; backed it up as config.json.incompatible and regenerated from template"
+  fi
+fi
+
 # ---- 5. systemd service ----------------------------------------------------
 SERVICE_FILE="$REPO_DIR/service/rndrsbc.service"
 BIN_PATH="$VENV_DIR/bin/rndrsbc"
