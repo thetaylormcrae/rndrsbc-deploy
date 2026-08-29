@@ -126,6 +126,12 @@ if [ "$DO_DEPS" = "yes" ]; then
   log "installing system packages (python3, venv, git)..."
   apt-get update -qq
   apt-get install -y -qq "$PY_BIN" "${PY_BIN}"-venv python3-pip git
+
+  if command -v raspi-config >/dev/null 2>&1; then
+    log "enabling Raspberry Pi SPI and I2C interfaces for e-paper displays..."
+    raspi-config nonint do_spi 0 2>/dev/null || true
+    raspi-config nonint do_i2c 0 2>/dev/null || true
+  fi
 fi
 
 # ---- 2. virtualenv ---------------------------------------------------------
