@@ -1,8 +1,8 @@
 {
   "_comment": "rndrSBC default configuration. Copy to config.json (or let the deployment scaffold create it) then adjust.",
   "display": {
-    "driver": "virtual",
-    "model": "epd7in3f",
+    "driver": "auto",
+    "model": "impression_7_3",
     "orientation": 0
   },
   "device": {
