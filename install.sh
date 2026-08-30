@@ -134,6 +134,28 @@ if [ "$DO_DEPS" = "yes" ]; then
   fi
 fi
 
+# ---- 1b. hardware libs + fonts (physical e-paper panel) -------------------
+# The venv below is created with --system-site-packages so the prebuilt apt
+# copies of the C drivers (spidev, RPi.GPIO, gpiod, smbus2) stay visible to the
+# engine's Python. If these are missing, pip has to recompile rpi-gpio/spidev/
+# gpiod/smbus2 from source on-device (slow, fragile on a Pi). Debconf may prompt
+# on rpi-gpio; DEBIAN_FRONTEND noninteractive keeps it quiet.
+HARDWARE_DEPS="python3-rpi.gpio python3-spidev python3-gpiod python3-smbus fonts-dejavu"
+if [ "$DO_DEPS" != "no" ]; then
+  if [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1; then
+    log "installing hardware libs + fonts (via sudo)..."
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $HARDWARE_DEPS \
+      || log "WARNING: some apt hardware libs unavailable; the [pi] pip fallback will attempt a source build"
+  elif [ "$(id -u)" -eq 0 ]; then
+    log "installing hardware libs + fonts..."
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $HARDWARE_DEPS \
+      || log "WARNING: some apt hardware libs unavailable; the [pi] pip fallback will attempt a source build"
+  else
+    log "WARNING: no root/sudo to apt-install hardware libs; the [pi] pip fallback will attempt a source build"
+  fi
+fi
+
 # ---- 2. virtualenv ---------------------------------------------------------
 if [ ! -x "$VENV_DIR/bin/python" ]; then
   log "creating virtualenv at $VENV_DIR"
