@@ -137,15 +137,25 @@ fi
 # ---- 2. virtualenv ---------------------------------------------------------
 if [ ! -x "$VENV_DIR/bin/python" ]; then
   log "creating virtualenv at $VENV_DIR"
-  "$PY_BIN" -m venv "$VENV_DIR"
+  # --system-site-packages: hardware libs (spidev, RPi.GPIO, gpiod, smbus2)
+  # are installed prebuilt via apt and must remain visible to the venv's
+  # Python; otherwise pip recompiles their C extensions on-device.
+  "$PY_BIN" -m venv --system-site-packages "$VENV_DIR"
 else
   log "reusing virtualenv at $VENV_DIR"
 fi
 
 # ---- 3. engine from PyPI ---------------------------------------------------
 log "installing/upgrading rndrsbc engine (PyPI, [pi] extra)..."
-"$VENV_DIR/bin/pip" install -q --no-cache-dir --upgrade pip
-"$VENV_DIR/bin/pip" install -q --no-cache-dir --upgrade "rndrsbc[pi]"
+# Pin rndrsbc to pypi.org ONLY: the Pi's pip already fans in piwheels, which
+# can shadow a newer rndrsbc wheel with an older armv7l build (the "stale",
+# crashy 0.6.6 was served that way). PIP_CONFIG_FILE=/dev/null neutralises any
+# ambient /etc/pip.conf; --index-url (no extra-index) drops piwheels for
+# rndrsbc itself. Hardware libs still resolve fine below via apt/system-site.
+PIP_CONFIG_FILE=/dev/null "$VENV_DIR/bin/pip" install -q --no-cache-dir --upgrade pip
+PIP_CONFIG_FILE=/dev/null "$VENV_DIR/bin/pip" install -q --no-cache-dir --upgrade \
+    --index-url https://pypi.org/simple \
+    "rndrsbc[pi]"
 
 VERSION=$("$VENV_DIR/bin/rndrsbc" version 2>/dev/null || "$VENV_DIR/bin/python" -c 'import core; print(getattr(core,"__version__","?"))')
 log "engine version: ${VERSION:-?}"

@@ -18,6 +18,7 @@ core: config scaffolding, the community widget catalog, and service wiring.
 > **Engine version tracking:** this repo's `catalog` pins `min_core: "0.3.0"`
 > (the release that ships display auto-detection). The engine itself upgrades
 > independently via `pip install -U rndrsbc` — this repo never holds wheel/code.
+> Current engine on PyPI: **0.7.1**.
 
 ---
 ## Relationship to the core
@@ -72,10 +73,11 @@ rndrsbc 8080
 pip install -U rndrsbc
 ```
 
-**Display auto-detection (v0.3.0+):** the default `driver: auto` probes for an
-Inky panel at startup and renders to the virtual display only if no panel is
-found (or when running headless). No manual `model` choice is required for
-standard Pimoroni panels.
+**Display config (hardware-first):** the default `config.template.json` uses
+`driver: "auto"` with `model: "spectra6"` (Inky Impression 7.3" Spectra 6,
+800×480, 7-colour). `driver: auto` probes the attached Inky panel at startup
+and renders to the virtual display only if no panel is found (or when running
+headless) — so the `model` field is a default, not a hard requirement.
 
 ### Community widgets — no git clone
 ```bash
@@ -97,11 +99,14 @@ sudo ./install.sh --with-service
 
 That single command:
 
-1. installs system packages (`python3`, venv, `git`)
-2. creates a virtualenv at `~/.venvs/rndrsbc`
-3. `pip`-installs the **`rndrsbc[pi]`** engine from PyPI
+1. installs system packages (`python3`, `python3-venv`, `git`)
+2. creates a virtualenv at `~/.venvs/rndrsbc` with `--system-site-packages`
+   so apt-installed SPI/GPIO libs stay visible (no on-device C compilation)
+3. `pip`-installs the **`rndrsbc[pi]`** engine from **pypi.org only** — the
+   `--index-url` pin (no extra-index) drops piwheels' armv7l shadow so a newer
+   rndrsbc wheel can never be masked by a stale Raspberry build
 4. scaffolds a deploy home at `~/.rndrsbc` with a default `config.json`
-   (`driver: "auto"`) and `data/` `plugins/` `registry/`
+   (`driver: "auto"`, `model: "spectra6"`) and `data/` `plugins/` `registry/`
 5. registers the `systemd` boot service (from `--with-service`)
 
 Manage afterwards:
@@ -110,7 +115,7 @@ Manage afterwards:
 export RNDRSBC_HOME="$HOME/.rndrsbc"
 ~/.venvs/rndrsbc/bin/rndrsbc 8080             # run in foreground
 sudo systemctl enable --now rndrsbc-$USER     # or boot at startup
-rndrsbc version                               # confirm engine version (0.3.0)
+rndrsbc version                               # confirm engine version (0.7.1)
 ```
 
 Flags: `--venv DIR`, `--home DIR`, `--with-service`, `--service-user U`,
@@ -126,13 +131,15 @@ Flags: `--venv DIR`, `--home DIR`, `--with-service`, `--service-user U`,
 
 ```bash
 sudo apt update && sudo apt install -y python3-venv git
+sudo apt install -y python3-spidev python3-rpi.gpio python3-gpiod python3-smbus
+
 git clone https://github.com/thetaylormcrae/rndrsbc-deploy.git ~/rndrsbc
 cd ~/rndrsbc
 
-python3 -m venv ~/.venvs/rndrsbc && source ~/.venvs/rndrsbc/bin/activate
+python3 -m venv --system-site-packages ~/.venvs/rndrsbc && source ~/.venvs/rndrsbc/bin/activate
 pip install -U pip
-pip install rndrsbc[pi]        # 0.3.0
-rndrsbc version                # expect: 0.3.0
+PIP_CONFIG_FILE=/dev/null pip install --index-url https://pypi.org/simple rndrsbc[pi]   # 0.7.1
+rndrsbc version                # expect: 0.7.1
 
 ./bootstrap.sh --home "$RNDRSBC_HOME"       # scaffold deploy home + driver:auto config
 rndrsbc 8080                   # boots the frame

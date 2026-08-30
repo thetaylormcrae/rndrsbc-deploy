@@ -2,7 +2,7 @@
   "_comment": "rndrSBC default configuration. Copy to config.json (or let the deployment scaffold create it) then adjust.",
   "display": {
     "driver": "auto",
-    "model": "impression_7_3",
+    "model": "spectra6",
     "orientation": 0,
     "saturation": 0.5
   },
