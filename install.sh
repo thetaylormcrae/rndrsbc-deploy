@@ -184,6 +184,20 @@ log "engine version: ${VERSION:-?}"
 command -v "$VENV_DIR/bin/rndrsbc" >/dev/null 2>&1 || \
   die "engine installed but CLI not found; check 'pip show rndrsbc'"
 
+# Optional shell-level alias so `rndrsbc` works from an interactive shell, not
+# just as the systemd unit. The service uses the venv's absolute path and is
+# unaffected; this only adds a convenience symlink (root-owned, so the
+# service-user ownership of DEPLOY_HOME/venv is left untouched). Skip when we
+# can't write /usr/local/bin or when the engine ships no top-level script.
+if [ "$(id -u)" -eq 0 ] && [ -w /usr/local/bin ] && [ -x "$VENV_DIR/bin/rndrsbc" ]; then
+  if [ "$(readlink /usr/local/bin/rndrsbc 2>/dev/null)" != "$VENV_DIR/bin/rndrsbc" ]; then
+    ln -sf "$VENV_DIR/bin/rndrsbc" /usr/local/bin/rndrsbc
+    log "linked /usr/local/bin/rndrsbc -> $VENV_DIR/bin/rndrsbc (shell 'rndrsbc' now works)"
+  fi
+else
+  log "SKIP: no root or /usr/local/bin unwritable — shell 'rndrsbc' not linked; use $VENV_DIR/bin/rndrsbc"
+fi
+
 # ---- 4. deploy home scaffold ----------------------------------------------
 log "scaffolding deploy home at $DEPLOY_HOME"
 "$REPO_DIR/bootstrap.sh" --home "$DEPLOY_HOME"
