@@ -198,6 +198,29 @@ else
   log "SKIP: no root or /usr/local/bin unwritable — shell 'rndrsbc' not linked; use $VENV_DIR/bin/rndrsbc"
 fi
 
+# Persist pip hardening so future invocations "just work". The venv install
+# above is hardened once (PIP_CONFIG_FILE=/dev/null + --no-cache-dir), but a
+# later manual `sudo pip install --upgrade rndrsbc` runs as ROOT and reads
+# root's config + HTTP cache — which can serve a stale index (the two 'still on
+# 0.7.2' failures). Write a persistent root pip.conf: pypi.org-only (no piwheels
+# shadowing of a newer wheel) + no-cache. Idempotent; only when running as root.
+if [ "$(id -u)" -eq 0 ] && [ -d /root ]; then
+  mkdir -p /root/.config/pip
+  if ! grep -q "index-url = https://pypi.org/simple" /root/.config/pip/pip.conf 2>/dev/null; then
+    cat > /root/.config/pip/pip.conf <<'PIPCONF'
+[global]
+index-url = https://pypi.org/simple
+disable-pip-version-check = true
+no-cache-dir = true
+PIPCONF
+    log "wrote /root/.config/pip/pip.conf (pypi.org-only, no-cache) so future 'sudo pip' resolves the latest rndrsbc"
+  else
+    log "root pip.conf already hardened (pypi.org-only, no-cache)"
+  fi
+else
+  log "WARNING: not root — did not persist pip hardening; future 'sudo pip install' may hit stale root cache"
+fi
+
 # ---- 4. deploy home scaffold ----------------------------------------------
 log "scaffolding deploy home at $DEPLOY_HOME"
 "$REPO_DIR/bootstrap.sh" --home "$DEPLOY_HOME"
