@@ -79,6 +79,7 @@ if [ "${DO_UNINSTALL:-no}" = "yes" ]; then
   if [ -f "/etc/systemd/system/rndrsbc-${SERVICE_USER}.service" ]; then
     systemctl disable --now "rndrsbc-${SERVICE_USER}.service" 2>/dev/null || true
     rm -f "/etc/systemd/system/rndrsbc-${SERVICE_USER}.service"
+    rm -f /etc/polkit-1/rules.d/10-rndrsbc-restart.rules
     systemctl daemon-reload
     log "removed systemd service rndrsbc-${SERVICE_USER}"
   else
@@ -292,9 +293,16 @@ if [ "$INSTALL_SERVICE" = "yes" ]; then
   fi
   sed -e "s|^ExecStart=.*|ExecStart=${BIN_PATH} 8080|" \
       -e "s|^Environment=RNDRSBC_HOME=.*|Environment=RNDRSBC_HOME=${DEPLOY_HOME}|" \
+      -e "s|^Environment=RNDRSBC_UNIT=.*|Environment=RNDRSBC_UNIT=rndrsbc-${SERVICE_USER}.service|" \
       -e "s|^User=%i|User=${SERVICE_USER}|" \
       -e "s|^Group=%i|Group=${SERVICE_USER}|" \
       "$SERVICE_FILE" > /etc/systemd/system/rndrsbc-${SERVICE_USER}.service
+
+  # Let the unprivileged service user restart its own unit (OTA self-update).
+  if [ -f "$REPO_DIR/service/10-rndrsbc-restart.rules" ]; then
+    cp "$REPO_DIR/service/10-rndrsbc-restart.rules" /etc/polkit-1/rules.d/
+    log "installed polkit rule (OTA self-restart)"
+  fi
   systemctl daemon-reload
 
   # restart (even if already running) so the just-upgraded venv is actually loaded
