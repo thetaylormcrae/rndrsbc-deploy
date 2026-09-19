@@ -8,11 +8,11 @@ User=%i
 Group=%i
 # Point the engine at a user-owned state dir; code stays in site-packages.
 Environment=RNDRSBC_HOME=/home/%i/.rndrsbc
-ExecStart=/usr/local/bin/rndrsbc 8080
+Environment=RNDRSBC_UNIT=rndrsbc@%i.service
+ExecStart=/home/%i/.venvs/rndrsbc/bin/rndrsbc 8080
 Restart=on-failure
 RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-# Lets the OTA updater restart this exact unit.
-Environment=RNDRSBC_UNIT=rndrsbc@%i.service
+
