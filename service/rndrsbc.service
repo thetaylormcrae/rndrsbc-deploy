@@ -14,3 +14,5 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+# Lets the OTA updater restart this exact unit.
+Environment=RNDRSBC_UNIT=rndrsbc@%i.service
